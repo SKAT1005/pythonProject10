@@ -1,7 +1,7 @@
 import asyncio
 import configparser
-import json
-import os
+import time
+
 import telethon
 import requests
 
@@ -21,7 +21,7 @@ async def get_token():
         'Authorization': 'Basic NjFkYjhiZmQtYzVjNS00YjI5LTg1NmItMzY4MTI3MTYzYjlmOjgyMzUzYWU5LTkwZDYtNDdiMi04ZjYyLTg3ODkwNTM5NDAwMw=='
     }
 
-    response = requests.request("POST", url, headers=headers, data=payload, verify=False)
+    response = requests.post(url, headers=headers, data=payload, verify=False)
     n = response.json()
     return response.json()['access_token']
 
@@ -37,7 +37,7 @@ async def generate_comment(text):
         "messages": [
             {
                 "role": "system",
-                "content": 'Создавай под текст, который я тебе передаю комментарий, длиной не более 25 слов'
+                "content": 'Комментируй полезную критику к посту не больше 100 символов'
             },
             {
                 "role": "user",
@@ -65,7 +65,7 @@ async def send_comment(entity, client):
         text = await generate_comment(message.text)
     except Exception as e:
         return None
-    if text:
+    if text and not message.replies:
         try:
             await client.send_message(entity, text, comment_to=message)
         except Exception as e:
@@ -78,18 +78,21 @@ async def get_user_channels():
     api_id = int(config['telegram']['api_id'])
     api_hash = config['telegram']['api_hash']
     phone = config['telegram']['phone']
+    password = config['telegram']['password']
 
-    client = telethon.TelegramClient('user', api_id, api_hash,
+    client = telethon.TelegramClient('123', api_id, api_hash,
                                      system_version="4.16.30-vxCUSTOM")
-    await client.start(phone=phone)
+    await client.start(phone=phone, password=password)
     while True:
         dialogs = await client.get_dialogs()
         for dialog in dialogs:
             if dialog.is_channel and not dialog.is_group:
                 try:
                     await send_comment(dialog.entity, client)
+                    print(dialog.name)
                 except Exception:
                     pass
+        time.sleep(60)
 
 
 asyncio.run(get_user_channels())
